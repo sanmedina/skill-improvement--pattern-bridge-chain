@@ -65,3 +65,20 @@ class AuthHandler(MiddlewareHandler):
             request_handler.wfile.write(b"WRONG CREDENTIALS")
             return
         self.next(request_handler)
+
+
+class CacheHandler(MiddlewareHandler):
+    def __init__(self) -> None:
+        super().__init__()
+        self._cache = set()
+
+    def handle(self, request_handler: BaseHTTPRequestHandler) -> None:
+        if request_handler.command != "GET":
+            return self.next(request_handler)
+        if request_handler.path in self._cache:
+            request_handler.send_response(200)
+            request_handler.end_headers()
+            request_handler.wfile.write(b"USING CACHE")
+            return
+        self._cache.add(request_handler.path)
+        self.next(request_handler)
