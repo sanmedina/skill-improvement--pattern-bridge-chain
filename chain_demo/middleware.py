@@ -1,3 +1,4 @@
+import base64
 from abc import ABCMeta, abstractmethod
 from http.server import BaseHTTPRequestHandler
 from typing import Dict, Optional, Tuple
@@ -45,4 +46,22 @@ class RouterHandler(MiddlewareHandler):
 class DummyHandler(MiddlewareHandler):
     def handle(self, request_handler: BaseHTTPRequestHandler) -> None:
         print(f"Got this request: {request_handler.path}")
+        self.next(request_handler)
+
+
+class AuthHandler(MiddlewareHandler):
+    def handle(self, request_handler: BaseHTTPRequestHandler) -> None:
+        basic_auth: str = request_handler.headers.get("Authorization")
+        if not (basic_auth and basic_auth.startswith("Basic ")):
+            request_handler.send_response(401)
+            request_handler.end_headers()
+            request_handler.wfile.write(b"CREDENTIALS NOT PROVIDED")
+            return
+        _, request_b64 = basic_auth.split(" ")
+        expected_b64 = base64.b64encode(b"user:1234").decode()
+        if request_b64 != expected_b64:
+            request_handler.send_response(401)
+            request_handler.end_headers()
+            request_handler.wfile.write(b"WRONG CREDENTIALS")
+            return
         self.next(request_handler)

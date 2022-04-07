@@ -2,20 +2,25 @@ from http.server import CGIHTTPRequestHandler
 from socketserver import TCPServer
 
 from endpoints import hello, save
-from middleware import DummyHandler, MiddlewareHandler, RouterHandler
+from middleware import (AuthHandler, DummyHandler, MiddlewareHandler,
+                        RouterHandler)
 
 
-def create_middleware() -> MiddlewareHandler:
+def create_middleware(router: RouterHandler) -> MiddlewareHandler:
     dummy_handler = DummyHandler()
+    auth_handler = AuthHandler()
+
+    dummy_handler.then(auth_handler)
+    auth_handler.then(router)
+
     return dummy_handler
 
 
 class Handler(CGIHTTPRequestHandler):
     def __init__(self, *args, **kwargs) -> None:
-        self.middleware = create_middleware()
         router = RouterHandler()
         self._register_routes(router)
-        self.middleware.then(router)
+        self.middleware = create_middleware(router)
         super().__init__(*args, **kwargs)
 
     def _register_routes(self, router: RouterHandler):
